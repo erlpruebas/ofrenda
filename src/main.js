@@ -195,7 +195,7 @@ function updateTableSize() {
 }
 
 function bowlSpacing() {
-  return 0.74;
+  return 1.02;
 }
 
 function makeBowl(index, position) {
@@ -303,8 +303,8 @@ function updateWater(bowl) {
   const fill = bowl.userData.fill;
   const water = bowl.userData.water;
   water.visible = fill > 0.02;
-  water.scale.y = Math.max(0.01, fill * 5.4);
-  water.position.y = 0.07 + fill * 0.22;
+  water.scale.y = Math.max(0.01, fill * 6.4);
+  water.position.y = 0.075 + fill * 0.245;
 }
 
 function updateUi() {
