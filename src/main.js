@@ -204,31 +204,31 @@ function makeBowl(index, position) {
 
   const bowlShape = new THREE.LatheGeometry(
     [
-      new THREE.Vector2(0.12, 0),
-      new THREE.Vector2(0.2, 0.035),
-      new THREE.Vector2(0.25, 0.14),
-      new THREE.Vector2(0.3, 0.29),
-      new THREE.Vector2(0.33, 0.39),
+      new THREE.Vector2(0.12, 0.02),
+      new THREE.Vector2(0.24, 0.045),
+      new THREE.Vector2(0.34, 0.13),
+      new THREE.Vector2(0.41, 0.25),
+      new THREE.Vector2(0.45, 0.34),
     ],
     24,
   );
   const bowl = new THREE.Mesh(bowlShape, glassMaterial);
   group.add(bowl);
 
-  const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.018, 24, 1, true), rimMaterial);
-  rim.position.y = 0.39;
+  const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.014, 24, 1, true), rimMaterial);
+  rim.position.y = 0.34;
   group.add(rim);
 
-  const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.19, 0.055, 18), rimMaterial);
+  const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.045, 18), rimMaterial);
   foot.position.y = 0.02;
   group.add(foot);
 
-  const water = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.18, 0.02, 24), waterMaterial);
+  const water = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.2, 0.02, 24), waterMaterial);
   water.position.y = 0.1;
   water.visible = false;
   group.add(water);
 
-  const marker = new THREE.Mesh(new THREE.RingGeometry(0.4, 0.43, 32), markerMaterial);
+  const marker = new THREE.Mesh(new THREE.RingGeometry(0.48, 0.51, 32), markerMaterial);
   marker.rotation.x = -Math.PI / 2;
   marker.position.y = 0.015;
   marker.visible = false;
@@ -303,8 +303,8 @@ function updateWater(bowl) {
   const fill = bowl.userData.fill;
   const water = bowl.userData.water;
   water.visible = fill > 0.02;
-  water.scale.y = Math.max(0.01, fill * 7);
-  water.position.y = 0.075 + fill * 0.27;
+  water.scale.y = Math.max(0.01, fill * 5.4);
+  water.position.y = 0.07 + fill * 0.22;
 }
 
 function updateUi() {
