@@ -30,7 +30,7 @@ controls.enableDamping = true;
 controls.target.set(0, 0.8, 0);
 controls.maxPolarAngle = Math.PI * 0.48;
 controls.minDistance = 3.7;
-controls.maxDistance = 15;
+controls.maxDistance = 24;
 
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
@@ -150,11 +150,6 @@ function addHelpers() {
   spout.position.set(0.27, 0.26, 0);
   jug.add(spout);
 
-  const handle = new THREE.Mesh(new THREE.TorusGeometry(0.19, 0.018, 8, 16, Math.PI * 1.35), ceramic);
-  handle.rotation.z = Math.PI / 2;
-  handle.position.set(-0.22, 0.08, 0);
-  jug.add(handle);
-
   helpersGroup.add(jug);
 
   bucket = new THREE.Group();
@@ -195,15 +190,12 @@ function updateTableSize() {
   jug.position.set(-width / 2 - 0.45, 1.28, depth / 2 - 0.2);
   jug.rotation.set(0, -0.22, -0.2);
   bucket.position.set(width / 2 + 0.5, 1.05, depth / 2 - 0.15);
-  cleaningCloth.position.set(width / 2 - 0.65, 0.96, -depth / 2 + 0.3);
-  cleaningCloth.rotation.y = -0.3;
+  cleaningCloth.position.set(bucket.position.x, bucket.position.y + 0.28, bucket.position.z);
+  cleaningCloth.rotation.set(0.18, -0.2, 0.12);
 }
 
 function bowlSpacing() {
-  const total = state.rows * state.cols;
-  if (total > 80) return 0.42;
-  if (total > 35) return 0.48;
-  return 0.58;
+  return 0.74;
 }
 
 function makeBowl(index, position) {
@@ -223,7 +215,7 @@ function makeBowl(index, position) {
   const bowl = new THREE.Mesh(bowlShape, glassMaterial);
   group.add(bowl);
 
-  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.35, 0.012, 8, 24), rimMaterial);
+  const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.018, 24, 1, true), rimMaterial);
   rim.position.y = 0.39;
   group.add(rim);
 
@@ -289,7 +281,7 @@ function frameCamera() {
   const width = Math.max(3.2, (state.cols - 1) * spacing + 1.4);
   const depth = Math.max(2.2, (state.rows - 1) * spacing + 1.3);
   const portrait = window.innerHeight > window.innerWidth;
-  const distance = Math.max(5.4, Math.min(13.5, width * (portrait ? 0.75 : 0.55) + depth * 0.7 + 3.2));
+  const distance = Math.max(5.4, Math.min(20, width * (portrait ? 0.75 : 0.6) + depth * 0.85 + 3.2));
   const height = Math.max(3.5, depth * 0.58 + (portrait ? 3.2 : 2.5));
   camera.position.set(0, height, distance);
   controls.target.set(0, 0.9, 0);
@@ -395,13 +387,20 @@ async function fillBowl(bowl) {
 }
 
 async function emptyBowl(bowl) {
-  const pos = bowl.getWorldPosition(new THREE.Vector3());
+  const originalPosition = bowl.userData.originalPosition.clone();
+  const originalRotation = new THREE.Euler(0, 0, 0);
+  const bucketSide = new THREE.Vector3(bucket.position.x - 0.18, 1.25, bucket.position.z - 0.08);
   const clothHome = cleaningCloth.position.clone();
+
   playWaterSound('empty');
+  await animateTransform(bowl, bucketSide, new THREE.Euler(0, 0, 0), 360);
+  await animateTransform(bowl, bucketSide, new THREE.Euler(0.18, 0, -0.95), 260);
   await animateFillLevel(bowl, 0, 520);
-  await animateTransform(cleaningCloth, pos.clone().add(new THREE.Vector3(0.12, 0.55, 0.06)), new THREE.Euler(0.1, -0.3, 0.35), 210);
-  await animateTransform(cleaningCloth, pos.clone().add(new THREE.Vector3(-0.12, 0.54, -0.04)), new THREE.Euler(0.05, 0.25, -0.25), 210);
-  await animateTransform(cleaningCloth, clothHome, new THREE.Euler(0, -0.3, 0), 220);
+  await animateTransform(bowl, bucketSide, originalRotation, 220);
+  await animateTransform(cleaningCloth, bucketSide.clone().add(new THREE.Vector3(0.08, 0.28, 0.02)), new THREE.Euler(0.1, -0.3, 0.35), 190);
+  await animateTransform(cleaningCloth, bucketSide.clone().add(new THREE.Vector3(-0.1, 0.27, -0.03)), new THREE.Euler(0.05, 0.25, -0.25), 190);
+  await animateTransform(cleaningCloth, clothHome, new THREE.Euler(0.18, -0.2, 0.12), 220);
+  await animateTransform(bowl, originalPosition, originalRotation, 360);
 }
 
 async function advanceRitual() {
