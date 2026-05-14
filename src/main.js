@@ -2,7 +2,9 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const canvas = document.querySelector('#scene');
-const modeInput = document.querySelector('#mode');
+const panel = document.querySelector('#controlsPanel');
+const panelToggle = document.querySelector('#panelToggle');
+const modeToggle = document.querySelector('#modeToggle');
 const rowsInput = document.querySelector('#rows');
 const colsInput = document.querySelector('#cols');
 const applyLayoutButton = document.querySelector('#applyLayout');
@@ -14,30 +16,21 @@ const stepTitle = document.querySelector('#stepTitle');
 const stepText = document.querySelector('#stepText');
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x111715);
-scene.fog = new THREE.Fog(0x111715, 8, 24);
+scene.background = new THREE.Color(0x151c19);
 
-const renderer = new THREE.WebGLRenderer({
-  canvas,
-  antialias: true,
-  alpha: false,
-});
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.35));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.1;
 
-const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
-camera.position.set(0, 5.1, 8.5);
+const camera = new THREE.PerspectiveCamera(44, 1, 0.1, 80);
+camera.position.set(0, 4.2, 7.4);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-controls.target.set(0, 0.65, 0);
-controls.maxPolarAngle = Math.PI * 0.47;
-controls.minDistance = 4.2;
-controls.maxDistance = 16;
+controls.target.set(0, 0.8, 0);
+controls.maxPolarAngle = Math.PI * 0.48;
+controls.minDistance = 3.7;
+controls.maxDistance = 15;
 
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
@@ -48,170 +41,203 @@ const state = {
   cols: 7,
   mode: 'fill',
   activeIndex: 0,
-  step: 0,
   bowls: [],
   animating: false,
+  audioContext: null,
+  pointerStart: null,
 };
-
-const fillSteps = [
-  'Acerca la jarra al bol seleccionado.',
-  'Inclina la jarra y empieza a verter.',
-  'El agua sube dentro del bol de cristal.',
-  'La jarra vuelve al inicio y pasa al siguiente bol.',
-];
-
-const emptySteps = [
-  'Toma el bol seleccionado de la mesa.',
-  'Vierte el agua suavemente en el cubo.',
-  'Seca el bol con el trapo.',
-  'Coloca el bol limpio de nuevo en su sitio.',
-];
 
 const room = new THREE.Group();
 const bowlsGroup = new THREE.Group();
 const helpersGroup = new THREE.Group();
 scene.add(room, bowlsGroup, helpersGroup);
 
-const glassMaterial = new THREE.MeshPhysicalMaterial({
-  color: 0xd9f5ff,
+const glassMaterial = new THREE.MeshStandardMaterial({
+  color: 0xd8f1ff,
   transparent: true,
-  opacity: 0.27,
-  transmission: 0.78,
-  roughness: 0.04,
+  opacity: 0.36,
+  roughness: 0.08,
   metalness: 0,
-  thickness: 0.08,
-  ior: 1.45,
-  clearcoat: 1,
-  clearcoatRoughness: 0.08,
+  side: THREE.DoubleSide,
 });
 
-const waterMaterial = new THREE.MeshPhysicalMaterial({
-  color: 0x85d9ff,
+const rimMaterial = new THREE.MeshStandardMaterial({
+  color: 0xf1fbff,
   transparent: true,
-  opacity: 0.68,
-  roughness: 0.09,
-  metalness: 0,
-  transmission: 0.28,
+  opacity: 0.7,
+  roughness: 0.12,
 });
 
-const activeMaterial = new THREE.MeshStandardMaterial({
-  color: 0xf7d77a,
-  emissive: 0x7a5213,
-  emissiveIntensity: 0.65,
-  roughness: 0.22,
+const waterMaterial = new THREE.MeshStandardMaterial({
+  color: 0x7dcff2,
+  transparent: true,
+  opacity: 0.72,
+  roughness: 0.18,
 });
 
-const woodMaterial = new THREE.MeshStandardMaterial({
-  color: 0x725033,
-  roughness: 0.55,
-  metalness: 0.02,
+const markerMaterial = new THREE.MeshBasicMaterial({
+  color: 0xf6d36f,
+  transparent: true,
+  opacity: 0.95,
 });
+
+const woodMaterial = new THREE.MeshStandardMaterial({ color: 0x8a6542, roughness: 0.72 });
+const clothMaterial = new THREE.MeshStandardMaterial({ color: 0xb5372a, roughness: 0.8 });
+
+let tableTop;
+let altarCloth;
+const tableLegs = [];
+let jug;
+let bucket;
+let cleaningCloth;
 
 function addLights() {
-  const hemi = new THREE.HemisphereLight(0xb8d8ff, 0x24180e, 1.7);
-  scene.add(hemi);
+  scene.add(new THREE.HemisphereLight(0xf4f8ff, 0x2b1b12, 2.2));
 
-  const key = new THREE.DirectionalLight(0xfff4dc, 3.6);
-  key.position.set(-4, 8, 5);
-  key.castShadow = true;
-  key.shadow.mapSize.set(2048, 2048);
-  key.shadow.camera.left = -9;
-  key.shadow.camera.right = 9;
-  key.shadow.camera.top = 9;
-  key.shadow.camera.bottom = -9;
+  const key = new THREE.DirectionalLight(0xfff1c7, 1.8);
+  key.position.set(-3, 6, 4);
   scene.add(key);
 
-  const candle = new THREE.PointLight(0xffb15d, 2.5, 8);
-  candle.position.set(3.8, 1.6, 2.6);
-  scene.add(candle);
+  const soft = new THREE.DirectionalLight(0x8cc6ff, 0.65);
+  soft.position.set(4, 4, -3);
+  scene.add(soft);
 }
 
 function addRoom() {
   const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(24, 24),
-    new THREE.MeshStandardMaterial({ color: 0x2b2118, roughness: 0.7 }),
+    new THREE.PlaneGeometry(22, 18),
+    new THREE.MeshStandardMaterial({ color: 0x33271d, roughness: 0.86 }),
   );
   floor.rotation.x = -Math.PI / 2;
-  floor.receiveShadow = true;
   room.add(floor);
 
-  const backWall = new THREE.Mesh(
-    new THREE.PlaneGeometry(24, 12),
-    new THREE.MeshStandardMaterial({ color: 0x27302a, roughness: 0.82 }),
+  const wall = new THREE.Mesh(
+    new THREE.PlaneGeometry(22, 9),
+    new THREE.MeshStandardMaterial({ color: 0x202a25, roughness: 0.9 }),
   );
-  backWall.position.set(0, 6, -6);
-  backWall.receiveShadow = true;
-  room.add(backWall);
+  wall.position.set(0, 4.5, -5.6);
+  room.add(wall);
 
-  const sideWall = new THREE.Mesh(
-    new THREE.PlaneGeometry(12, 12),
-    new THREE.MeshStandardMaterial({ color: 0x1e2723, roughness: 0.86 }),
-  );
-  sideWall.rotation.y = Math.PI / 2;
-  sideWall.position.set(-8, 6, 0);
-  sideWall.receiveShadow = true;
-  room.add(sideWall);
-
-  const tableTop = new THREE.Mesh(new THREE.BoxGeometry(12, 0.28, 3.6), woodMaterial);
-  tableTop.position.y = 0.75;
-  tableTop.castShadow = true;
-  tableTop.receiveShadow = true;
+  tableTop = new THREE.Mesh(new THREE.BoxGeometry(1, 0.2, 1), woodMaterial);
+  tableTop.position.y = 0.72;
   room.add(tableTop);
 
-  for (const x of [-5.5, 5.5]) {
-    for (const z of [-1.45, 1.45]) {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.16, 1.5, 12), woodMaterial);
-      leg.position.set(x, 0, z);
-      leg.castShadow = true;
-      room.add(leg);
-    }
-  }
-
-  const altarCloth = new THREE.Mesh(
-    new THREE.BoxGeometry(11.3, 0.035, 2.9),
-    new THREE.MeshStandardMaterial({ color: 0x8d1f16, roughness: 0.62 }),
-  );
-  altarCloth.position.y = 0.92;
-  altarCloth.receiveShadow = true;
+  altarCloth = new THREE.Mesh(new THREE.BoxGeometry(1, 0.035, 1), clothMaterial);
+  altarCloth.position.y = 0.85;
   room.add(altarCloth);
+
+  for (let index = 0; index < 4; index += 1) {
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.13, 1.3, 8), woodMaterial);
+    leg.position.y = 0.05;
+    tableLegs.push(leg);
+    room.add(leg);
+  }
+}
+
+function addHelpers() {
+  jug = new THREE.Group();
+  const ceramic = new THREE.MeshStandardMaterial({ color: 0xe2c48e, roughness: 0.62 });
+
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.24, 0.5, 16), ceramic);
+  jug.add(body);
+
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.13, 0.24, 16), ceramic);
+  neck.position.y = 0.35;
+  jug.add(neck);
+
+  const spout = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.26, 12), ceramic);
+  spout.rotation.z = -Math.PI / 2;
+  spout.position.set(0.27, 0.26, 0);
+  jug.add(spout);
+
+  const handle = new THREE.Mesh(new THREE.TorusGeometry(0.19, 0.018, 8, 16, Math.PI * 1.35), ceramic);
+  handle.rotation.z = Math.PI / 2;
+  handle.position.set(-0.22, 0.08, 0);
+  jug.add(handle);
+
+  helpersGroup.add(jug);
+
+  bucket = new THREE.Group();
+  const metal = new THREE.MeshStandardMaterial({ color: 0x59636b, roughness: 0.45, metalness: 0.35 });
+  const bucketBody = new THREE.Mesh(new THREE.CylinderGeometry(0.33, 0.25, 0.42, 18, 1, true), metal);
+  bucket.add(bucketBody);
+  helpersGroup.add(bucket);
+
+  cleaningCloth = new THREE.Mesh(
+    new THREE.BoxGeometry(0.56, 0.035, 0.32),
+    new THREE.MeshStandardMaterial({ color: 0xf1e6cb, roughness: 0.96 }),
+  );
+  helpersGroup.add(cleaningCloth);
+}
+
+function updateTableSize() {
+  const spacing = bowlSpacing();
+  const width = Math.max(3.2, (state.cols - 1) * spacing + 1.4);
+  const depth = Math.max(2.2, (state.rows - 1) * spacing + 1.3);
+
+  tableTop.scale.set(width, 1, depth);
+  altarCloth.scale.set(width - 0.42, 1, depth - 0.36);
+
+  const legInsetX = width / 2 - 0.28;
+  const legInsetZ = depth / 2 - 0.25;
+  const positions = [
+    [-legInsetX, -legInsetZ],
+    [legInsetX, -legInsetZ],
+    [-legInsetX, legInsetZ],
+    [legInsetX, legInsetZ],
+  ];
+
+  tableLegs.forEach((leg, index) => {
+    leg.position.x = positions[index][0];
+    leg.position.z = positions[index][1];
+  });
+
+  jug.position.set(-width / 2 - 0.45, 1.28, depth / 2 - 0.2);
+  jug.rotation.set(0, -0.22, -0.2);
+  bucket.position.set(width / 2 + 0.5, 1.05, depth / 2 - 0.15);
+  cleaningCloth.position.set(width / 2 - 0.65, 0.96, -depth / 2 + 0.3);
+  cleaningCloth.rotation.y = -0.3;
+}
+
+function bowlSpacing() {
+  const total = state.rows * state.cols;
+  if (total > 80) return 0.42;
+  if (total > 35) return 0.48;
+  return 0.58;
 }
 
 function makeBowl(index, position) {
   const group = new THREE.Group();
   group.position.copy(position);
-  group.userData.index = index;
 
-  const outer = new THREE.Mesh(new THREE.SphereGeometry(0.33, 48, 24, 0, Math.PI * 2, 0, Math.PI * 0.55), glassMaterial);
-  outer.scale.set(1, 0.68, 1);
-  outer.rotation.x = Math.PI;
-  outer.position.y = 0.18;
-  outer.castShadow = true;
-  outer.receiveShadow = true;
-  group.add(outer);
-
-  const rim = new THREE.Mesh(
-    new THREE.TorusGeometry(0.33, 0.018, 12, 64),
-    new THREE.MeshPhysicalMaterial({ color: 0xf3fbff, transparent: true, opacity: 0.55, roughness: 0.04 }),
+  const bowlShape = new THREE.LatheGeometry(
+    [
+      new THREE.Vector2(0.12, 0),
+      new THREE.Vector2(0.2, 0.035),
+      new THREE.Vector2(0.25, 0.14),
+      new THREE.Vector2(0.3, 0.29),
+      new THREE.Vector2(0.33, 0.39),
+    ],
+    24,
   );
-  rim.position.y = 0.18;
+  const bowl = new THREE.Mesh(bowlShape, glassMaterial);
+  group.add(bowl);
+
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.35, 0.012, 8, 24), rimMaterial);
+  rim.position.y = 0.39;
   group.add(rim);
 
-  const foot = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.16, 0.21, 0.06, 32),
-    new THREE.MeshPhysicalMaterial({ color: 0xcdf4ff, transparent: true, opacity: 0.34, roughness: 0.08 }),
-  );
-  foot.position.y = 0.01;
-  foot.castShadow = true;
+  const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.19, 0.055, 18), rimMaterial);
+  foot.position.y = 0.02;
   group.add(foot);
 
-  const water = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.2, 0.11, 48), waterMaterial);
+  const water = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.18, 0.02, 24), waterMaterial);
   water.position.y = 0.1;
-  water.scale.y = 0.02;
   water.visible = false;
   group.add(water);
 
-  const marker = new THREE.Mesh(new THREE.TorusGeometry(0.43, 0.012, 8, 64), activeMaterial);
-  marker.rotation.x = Math.PI / 2;
+  const marker = new THREE.Mesh(new THREE.RingGeometry(0.4, 0.43, 32), markerMaterial);
+  marker.rotation.x = -Math.PI / 2;
   marker.position.y = 0.015;
   marker.visible = false;
   group.add(marker);
@@ -219,86 +245,24 @@ function makeBowl(index, position) {
   group.userData = {
     index,
     fill: 0,
-    water,
     marker,
+    water,
     originalPosition: position.clone(),
   };
 
   return group;
 }
 
-function makeJug() {
-  const jug = new THREE.Group();
-  const body = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.18, 0.24, 0.62, 32),
-    new THREE.MeshPhysicalMaterial({ color: 0xd8efff, transparent: true, opacity: 0.45, roughness: 0.06, transmission: 0.45 }),
-  );
-  body.castShadow = true;
-  jug.add(body);
-
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 0.24, 32), body.material);
-  neck.position.y = 0.42;
-  jug.add(neck);
-
-  const spout = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.28, 24), body.material);
-  spout.rotation.z = -Math.PI / 2;
-  spout.position.set(0.27, 0.34, 0);
-  jug.add(spout);
-
-  const handle = new THREE.Mesh(
-    new THREE.TorusGeometry(0.22, 0.018, 12, 32, Math.PI * 1.35),
-    new THREE.MeshPhysicalMaterial({ color: 0xe8f7ff, transparent: true, opacity: 0.5, roughness: 0.05 }),
-  );
-  handle.rotation.z = Math.PI / 2;
-  handle.position.set(-0.23, 0.12, 0);
-  jug.add(handle);
-
-  jug.position.set(-4.3, 1.45, 1.15);
-  helpersGroup.add(jug);
-  return jug;
-}
-
-function makeBucketAndCloth() {
-  const bucket = new THREE.Group();
-  const body = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.34, 0.25, 0.5, 40, 1, true),
-    new THREE.MeshStandardMaterial({ color: 0x65717b, roughness: 0.28, metalness: 0.55 }),
-  );
-  body.castShadow = true;
-  bucket.add(body);
-
-  const water = new THREE.Mesh(new THREE.CylinderGeometry(0.29, 0.23, 0.04, 32), waterMaterial);
-  water.position.y = 0.23;
-  bucket.add(water);
-  bucket.position.set(4.4, 1.18, 1.1);
-  helpersGroup.add(bucket);
-
-  const cloth = new THREE.Mesh(
-    new THREE.BoxGeometry(0.62, 0.035, 0.36),
-    new THREE.MeshStandardMaterial({ color: 0xf3ead3, roughness: 0.92 }),
-  );
-  cloth.position.set(3.55, 1.1, -1.2);
-  cloth.rotation.y = -0.45;
-  cloth.castShadow = true;
-  helpersGroup.add(cloth);
-
-  return { bucket, cloth };
-}
-
-const jug = makeJug();
-const { bucket, cloth } = makeBucketAndCloth();
-
 function rebuildBowls() {
   bowlsGroup.clear();
   state.bowls = [];
   state.activeIndex = 0;
-  state.step = 0;
   state.rows = clamp(Number(rowsInput.value), 1, 10);
   state.cols = clamp(Number(colsInput.value), 1, 20);
   rowsInput.value = state.rows;
   colsInput.value = state.cols;
 
-  const spacing = 0.62;
+  const spacing = bowlSpacing();
   const totalWidth = (state.cols - 1) * spacing;
   const totalDepth = (state.rows - 1) * spacing;
   let index = 0;
@@ -307,15 +271,29 @@ function rebuildBowls() {
     for (let col = 0; col < state.cols; col += 1) {
       const x = col * spacing - totalWidth / 2;
       const z = row * spacing - totalDepth / 2;
-      const bowl = makeBowl(index, new THREE.Vector3(x, 1.02, z));
+      const bowl = makeBowl(index, new THREE.Vector3(x, 0.88, z));
       bowlsGroup.add(bowl);
       state.bowls.push(bowl);
       index += 1;
     }
   }
 
-  updateActiveBowl();
+  updateTableSize();
+  nextBowlForMode();
   updateUi();
+  frameCamera();
+}
+
+function frameCamera() {
+  const spacing = bowlSpacing();
+  const width = Math.max(3.2, (state.cols - 1) * spacing + 1.4);
+  const depth = Math.max(2.2, (state.rows - 1) * spacing + 1.3);
+  const portrait = window.innerHeight > window.innerWidth;
+  const distance = Math.max(5.4, Math.min(13.5, width * (portrait ? 0.75 : 0.55) + depth * 0.7 + 3.2));
+  const height = Math.max(3.5, depth * 0.58 + (portrait ? 3.2 : 2.5));
+  camera.position.set(0, height, distance);
+  controls.target.set(0, 0.9, 0);
+  controls.update();
 }
 
 function clamp(value, min, max) {
@@ -330,39 +308,59 @@ function updateActiveBowl() {
 }
 
 function updateWater(bowl) {
-  const water = bowl.userData.water;
   const fill = bowl.userData.fill;
+  const water = bowl.userData.water;
   water.visible = fill > 0.02;
-  water.scale.y = Math.max(0.02, fill);
-  water.position.y = 0.06 + fill * 0.105;
-}
-
-function currentSteps() {
-  return state.mode === 'fill' ? fillSteps : emptySteps;
+  water.scale.y = Math.max(0.01, fill * 7);
+  water.position.y = 0.075 + fill * 0.27;
 }
 
 function updateUi() {
   const filled = state.bowls.filter((bowl) => bowl.userData.fill >= 0.99).length;
   const total = state.bowls.length;
+  const available = state.bowls.some((bowl) => (state.mode === 'fill' ? bowl.userData.fill < 0.99 : bowl.userData.fill > 0.01));
   statusText.textContent = `${filled} de ${total} boles llenos`;
   bar.style.width = `${total ? (filled / total) * 100 : 0}%`;
 
-  const steps = currentSteps();
-  stepTitle.textContent = `${state.mode === 'fill' ? 'Llenar' : 'Vaciar'}: paso ${state.step + 1} de 4`;
-  stepText.textContent = steps[state.step];
-  instruction.textContent =
-    state.mode === 'fill'
-      ? 'Haz clic en la escena para llenar cada bol en cuatro gestos.'
-      : 'Haz clic en un bol lleno o sigue el marcado para vaciar, secar y recolocar.';
+  const isFill = state.mode === 'fill';
+  modeToggle.textContent = `Modo: ${isFill ? 'llenar' : 'vaciar'}`;
+  stepTitle.textContent = `Modo ${isFill ? 'llenar' : 'vaciar'}`;
+
+  if (!available) {
+    stepText.textContent = isFill ? 'Todos los boles estan llenos.' : 'Todos los boles estan vacios y limpios.';
+    instruction.textContent = isFill ? 'Cambia a modo vaciar para continuar.' : 'Cambia a modo llenar para continuar.';
+    return;
+  }
+
+  stepText.textContent = isFill ? 'Cada toque llena suavemente el siguiente bol.' : 'Cada toque vacia y limpia suavemente el siguiente bol lleno.';
+  instruction.textContent = isFill
+    ? 'Toca o haz clic en la escena para llenar el siguiente bol.'
+    : 'Toca o haz clic en la escena para vaciar y limpiar el siguiente bol.';
 }
 
 function nextBowlForMode() {
-  const desiredFill = state.mode === 'fill' ? 0.99 : 0.01;
   const index = state.bowls.findIndex((bowl) =>
-    state.mode === 'fill' ? bowl.userData.fill < desiredFill : bowl.userData.fill > desiredFill,
+    state.mode === 'fill' ? bowl.userData.fill < 0.99 : bowl.userData.fill > 0.01,
   );
   state.activeIndex = index === -1 ? Math.max(0, state.bowls.length - 1) : index;
   updateActiveBowl();
+}
+
+function animateFillLevel(bowl, targetFill, duration = 650) {
+  const start = bowl.userData.fill;
+  const startedAt = performance.now();
+
+  return new Promise((resolve) => {
+    function frame(now) {
+      const t = Math.min(1, (now - startedAt) / duration);
+      const eased = t * t * (3 - 2 * t);
+      bowl.userData.fill = THREE.MathUtils.lerp(start, targetFill, eased);
+      updateWater(bowl);
+      if (t < 1) requestAnimationFrame(frame);
+      else resolve();
+    }
+    requestAnimationFrame(frame);
+  });
 }
 
 function animateTransform(object, targetPosition, targetRotation, duration = 420) {
@@ -387,77 +385,47 @@ function animateTransform(object, targetPosition, targetRotation, duration = 420
   });
 }
 
-function animateFillLevel(bowl, targetFill, duration = 360) {
-  const start = bowl.userData.fill;
-  const startedAt = performance.now();
-
-  return new Promise((resolve) => {
-    function frame(now) {
-      const t = Math.min(1, (now - startedAt) / duration);
-      const eased = t * t * (3 - 2 * t);
-      bowl.userData.fill = THREE.MathUtils.lerp(start, targetFill, eased);
-      updateWater(bowl);
-      if (t < 1) requestAnimationFrame(frame);
-      else resolve();
-    }
-    requestAnimationFrame(frame);
-  });
+async function fillBowl(bowl) {
+  const pos = bowl.getWorldPosition(new THREE.Vector3());
+  const home = jug.position.clone();
+  await animateTransform(jug, pos.clone().add(new THREE.Vector3(-0.35, 0.62, 0.05)), new THREE.Euler(0, -0.15, -0.78), 330);
+  playWaterSound('fill');
+  await animateFillLevel(bowl, 1, 720);
+  await animateTransform(jug, home, new THREE.Euler(0, -0.22, -0.2), 360);
 }
 
-async function handleFillStep(bowl) {
-  const bowlPosition = bowl.getWorldPosition(new THREE.Vector3());
-  const home = new THREE.Vector3(-4.3, 1.45, 1.15);
-
-  if (state.step === 0) {
-    await animateTransform(jug, bowlPosition.clone().add(new THREE.Vector3(-0.42, 0.62, 0.14)), new THREE.Euler(0, 0, 0), 420);
-  } else if (state.step === 1) {
-    await animateTransform(jug, jug.position.clone(), new THREE.Euler(0.05, 0, -0.8), 300);
-  } else if (state.step === 2) {
-    await animateFillLevel(bowl, Math.min(1, bowl.userData.fill + 0.34), 440);
-  } else {
-    await animateTransform(jug, home, new THREE.Euler(0, 0, 0), 520);
-    bowl.userData.fill = 1;
-    updateWater(bowl);
-  }
-}
-
-async function handleEmptyStep(bowl) {
-  const original = bowl.userData.originalPosition;
-
-  if (state.step === 0) {
-    await animateTransform(bowl, bucket.position.clone().add(new THREE.Vector3(-0.32, 0.35, -0.05)), new THREE.Euler(0, 0, 0), 360);
-  } else if (state.step === 1) {
-    await animateTransform(bowl, bowl.position.clone(), new THREE.Euler(0.2, 0, 1.0), 320);
-    await animateFillLevel(bowl, 0, 360);
-  } else if (state.step === 2) {
-    await animateTransform(cloth, bowl.position.clone().add(new THREE.Vector3(0.18, 0.22, 0)), new THREE.Euler(0.3, 0.2, -0.4), 220);
-    await animateTransform(cloth, bowl.position.clone().add(new THREE.Vector3(-0.18, 0.23, 0.04)), new THREE.Euler(0.2, -0.2, 0.45), 220);
-    await animateTransform(cloth, new THREE.Vector3(3.55, 1.1, -1.2), new THREE.Euler(0, -0.45, 0), 250);
-  } else {
-    await animateTransform(bowl, original, new THREE.Euler(0, 0, 0), 430);
-  }
+async function emptyBowl(bowl) {
+  const pos = bowl.getWorldPosition(new THREE.Vector3());
+  const clothHome = cleaningCloth.position.clone();
+  playWaterSound('empty');
+  await animateFillLevel(bowl, 0, 520);
+  await animateTransform(cleaningCloth, pos.clone().add(new THREE.Vector3(0.12, 0.55, 0.06)), new THREE.Euler(0.1, -0.3, 0.35), 210);
+  await animateTransform(cleaningCloth, pos.clone().add(new THREE.Vector3(-0.12, 0.54, -0.04)), new THREE.Euler(0.05, 0.25, -0.25), 210);
+  await animateTransform(cleaningCloth, clothHome, new THREE.Euler(0, -0.3, 0), 220);
 }
 
 async function advanceRitual() {
   if (state.animating || state.bowls.length === 0) return;
-  const bowl = state.bowls[state.activeIndex];
+  let bowl = state.bowls[state.activeIndex];
   if (!bowl) return;
-
-  state.animating = true;
-  if (state.mode === 'fill') {
-    await handleFillStep(bowl);
-  } else {
-    await handleEmptyStep(bowl);
-  }
-
-  state.step += 1;
-  if (state.step > 3) {
-    state.step = 0;
+  if (!canActOnBowl(bowl)) {
     nextBowlForMode();
+    bowl = state.bowls[state.activeIndex];
   }
+  if (!bowl || !canActOnBowl(bowl)) return;
 
+  playClickSound();
+  state.animating = true;
+  if (state.mode === 'fill') await fillBowl(bowl);
+  else await emptyBowl(bowl);
   state.animating = false;
+
+  nextBowlForMode();
   updateUi();
+}
+
+function canActOnBowl(bowl) {
+  return state.mode === 'fill' ? bowl.userData.fill < 0.99 : bowl.userData.fill > 0.01;
 }
 
 function selectBowlFromPointer(event) {
@@ -472,7 +440,6 @@ function selectBowlFromPointer(event) {
   if (!bowl) return false;
 
   state.activeIndex = bowl.userData.index;
-  state.step = 0;
   updateActiveBowl();
   updateUi();
   return true;
@@ -487,12 +454,88 @@ function findBowlRoot(object) {
   return null;
 }
 
+function resetWater() {
+  state.bowls.forEach((bowl) => {
+    bowl.userData.fill = 0;
+    updateWater(bowl);
+  });
+  nextBowlForMode();
+  updateUi();
+}
+
 function resize() {
   const width = window.innerWidth;
   const height = window.innerHeight;
   renderer.setSize(width, height, false);
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
+  frameCamera();
+}
+
+function getAudioContext() {
+  if (!state.audioContext) {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return null;
+    state.audioContext = new AudioContext();
+  }
+  if (state.audioContext.state === 'suspended') {
+    state.audioContext.resume();
+  }
+  return state.audioContext;
+}
+
+function playClickSound() {
+  const audio = getAudioContext();
+  if (!audio) return;
+
+  const now = audio.currentTime;
+  const oscillator = audio.createOscillator();
+  const gain = audio.createGain();
+
+  oscillator.type = 'triangle';
+  oscillator.frequency.setValueAtTime(780, now);
+  oscillator.frequency.exponentialRampToValueAtTime(340, now + 0.045);
+  gain.gain.setValueAtTime(0.001, now);
+  gain.gain.exponentialRampToValueAtTime(0.08, now + 0.006);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.075);
+
+  oscillator.connect(gain).connect(audio.destination);
+  oscillator.start(now);
+  oscillator.stop(now + 0.085);
+}
+
+function playWaterSound(kind) {
+  const audio = getAudioContext();
+  if (!audio) return;
+
+  const now = audio.currentTime;
+  const duration = kind === 'fill' ? 0.72 : 0.52;
+  const bufferSize = Math.floor(audio.sampleRate * duration);
+  const buffer = audio.createBuffer(1, bufferSize, audio.sampleRate);
+  const data = buffer.getChannelData(0);
+
+  for (let i = 0; i < bufferSize; i += 1) {
+    const t = i / bufferSize;
+    const envelope = Math.sin(Math.PI * t);
+    const burble = Math.sin(i * (kind === 'fill' ? 0.055 : 0.085)) * 0.35;
+    data[i] = (Math.random() * 2 - 1 + burble) * envelope * 0.32;
+  }
+
+  const source = audio.createBufferSource();
+  const filter = audio.createBiquadFilter();
+  const gain = audio.createGain();
+
+  filter.type = 'lowpass';
+  filter.frequency.setValueAtTime(kind === 'fill' ? 880 : 640, now);
+  filter.frequency.linearRampToValueAtTime(kind === 'fill' ? 520 : 380, now + duration);
+  gain.gain.setValueAtTime(0.001, now);
+  gain.gain.exponentialRampToValueAtTime(0.13, now + 0.05);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+  source.buffer = buffer;
+  source.connect(filter).connect(gain).connect(audio.destination);
+  source.start(now);
+  source.stop(now + duration);
 }
 
 function render() {
@@ -500,9 +543,7 @@ function render() {
   state.bowls.forEach((bowl, index) => {
     const water = bowl.userData.water;
     if (water.visible) {
-      water.rotation.y = time * 0.6 + index * 0.07;
-      water.scale.x = 1 + Math.sin(time * 2.3 + index) * 0.015;
-      water.scale.z = 1 + Math.cos(time * 2.1 + index) * 0.015;
+      water.rotation.y = time * 0.22 + index * 0.04;
     }
   });
 
@@ -511,32 +552,46 @@ function render() {
   requestAnimationFrame(render);
 }
 
-modeInput.addEventListener('change', () => {
-  state.mode = modeInput.value;
-  state.step = 0;
+modeToggle.addEventListener('click', () => {
+  playClickSound();
+  state.mode = state.mode === 'fill' ? 'empty' : 'fill';
   nextBowlForMode();
   updateUi();
 });
 
-applyLayoutButton.addEventListener('click', rebuildBowls);
-resetButton.addEventListener('click', () => {
-  state.bowls.forEach((bowl) => {
-    bowl.userData.fill = 0;
-    bowl.position.copy(bowl.userData.originalPosition);
-    bowl.rotation.set(0, 0, 0);
-    updateWater(bowl);
-  });
-  state.step = 0;
-  state.activeIndex = 0;
-  updateActiveBowl();
-  updateUi();
+panelToggle.addEventListener('click', () => {
+  playClickSound();
+  const hidden = panel.classList.toggle('is-hidden');
+  panelToggle.textContent = hidden ? 'Mostrar menu' : 'Ocultar menu';
+  panelToggle.setAttribute('aria-expanded', String(!hidden));
 });
 
-canvas.addEventListener('click', (event) => {
-  if (!selectBowlFromPointer(event)) {
-    advanceRitual();
-    return;
-  }
+applyLayoutButton.addEventListener('click', () => {
+  playClickSound();
+  rebuildBowls();
+});
+
+resetButton.addEventListener('click', () => {
+  playClickSound();
+  resetWater();
+});
+
+canvas.addEventListener('pointerdown', (event) => {
+  if (event.pointerType === 'mouse' && event.button !== 0) return;
+  state.pointerStart = {
+    x: event.clientX,
+    y: event.clientY,
+    pointerId: event.pointerId,
+  };
+});
+
+canvas.addEventListener('pointerup', (event) => {
+  if (!state.pointerStart || state.pointerStart.pointerId !== event.pointerId) return;
+  const dx = event.clientX - state.pointerStart.x;
+  const dy = event.clientY - state.pointerStart.y;
+  state.pointerStart = null;
+  if (Math.hypot(dx, dy) > 8) return;
+  selectBowlFromPointer(event);
   advanceRitual();
 });
 
@@ -544,6 +599,7 @@ window.addEventListener('resize', resize);
 
 addLights();
 addRoom();
+addHelpers();
 rebuildBowls();
 resize();
 render();
