@@ -13,6 +13,7 @@
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -26,6 +27,8 @@ body {
     radial-gradient(circle at 18% 18%, rgba(243, 201, 106, 0.14), transparent 34%),
     radial-gradient(circle at 90% 12%, rgba(120, 160, 140, 0.14), transparent 28%),
     #111715;
+  -webkit-touch-callout: none;
+  user-select: none;
 }
 
 button,
@@ -44,6 +47,7 @@ select {
   display: block;
   cursor: pointer;
   touch-action: none;
+  outline: none;
 }
 
 .panel {
