@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import './styles.css';
 
 const canvas = document.querySelector('#scene');
 const modeInput = document.querySelector('#mode');

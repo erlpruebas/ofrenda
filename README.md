@@ -11,7 +11,7 @@ Aplicacion web 3D para practicar una ofrenda budista de agua con boles de crista
   - Llenar: 4 clics por bol.
   - Vaciar: tomar el bol, vaciarlo en el cubo, secarlo y recolocarlo.
 - Control de camara con raton: arrastrar para girar y rueda para acercar.
-- Preparado para publicar como GitHub Pages.
+- Preparado para publicar como GitHub Pages desde la raiz del repositorio o mediante GitHub Actions.
 
 ## Desarrollo local
 
@@ -32,7 +32,10 @@ El resultado se genera en `dist/`.
 
 ## Publicar en GitHub Pages
 
-Este proyecto incluye un workflow en `.github/workflows/pages.yml`.
+Este proyecto funciona de dos formas:
+
+- Publicando la rama `main` desde la raiz del repositorio.
+- Publicando el `dist/` generado por el workflow de `.github/workflows/pages.yml`.
 
 Pasos recomendados:
 
@@ -40,6 +43,11 @@ Pasos recomendados:
 2. Hacer commit de estos archivos.
 3. Anadir el remoto con `git remote add origin URL_DEL_REPO`.
 4. Subir con `git push -u origin main`.
-5. En GitHub, activar Pages desde `Settings > Pages > Source > GitHub Actions`.
+5. En GitHub, activar Pages desde `Settings > Pages`.
 
-Cada push a `main` ejecutara `npm ci`, `npm run build` y publicara la web.
+Si eliges `Deploy from a branch`, usa:
+
+- Branch: `main`
+- Folder: `/ (root)`
+
+Si eliges `GitHub Actions`, cada push a `main` ejecutara `npm ci`, `npm run build` y publicara la web.
