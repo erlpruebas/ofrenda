@@ -10,10 +10,6 @@ const applyLayoutButton = document.querySelector('#applyLayout');
 const fillAllButton = document.querySelector('#fillAll');
 const emptyAllButton = document.querySelector('#emptyAll');
 const instruction = document.querySelector('#instruction');
-const statusText = document.querySelector('#status');
-const bar = document.querySelector('#bar');
-const stepTitle = document.querySelector('#stepTitle');
-const stepText = document.querySelector('#stepText');
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x151c19);
@@ -326,22 +322,15 @@ function updateWater(bowl) {
 }
 
 function updateUi() {
-  const filled = state.bowls.filter((bowl) => bowl.userData.fill >= 0.99).length;
-  const total = state.bowls.length;
   const available = state.bowls.some((bowl) => (state.mode === 'fill' ? bowl.userData.fill < 0.99 : bowl.userData.fill > 0.01));
-  statusText.textContent = `${filled} de ${total} boles llenos`;
-  bar.style.width = `${total ? (filled / total) * 100 : 0}%`;
 
   const isFill = state.mode === 'fill';
-  stepTitle.textContent = `Ahora: ${isFill ? 'llenar' : 'vaciar'}`;
 
   if (!available) {
-    stepText.textContent = isFill ? 'Todos los boles estan llenos. Pasando a vaciar.' : 'Todos los boles estan vacios. Volviendo a llenar.';
     instruction.textContent = isFill ? 'El siguiente toque empezara a vaciar.' : 'El siguiente toque empezara a llenar.';
     return;
   }
 
-  stepText.textContent = isFill ? 'Cada toque llena suavemente el siguiente bol.' : 'Cada toque vacia y limpia suavemente el siguiente bol lleno.';
   instruction.textContent = isFill
     ? 'Toca o haz clic en la escena para llenar el siguiente bol.'
     : 'Toca o haz clic en la escena para vaciar y limpiar el siguiente bol.';
@@ -474,16 +463,6 @@ function findBowlRoot(object) {
   return null;
 }
 
-function resetWater() {
-  state.bowls.forEach((bowl) => {
-    bowl.userData.fill = 0;
-    updateWater(bowl);
-  });
-  state.mode = 'fill';
-  nextBowlForMode();
-  updateUi();
-}
-
 function setAllBowls(fill) {
   state.bowls.forEach((bowl) => {
     bowl.userData.fill = fill;
@@ -603,6 +582,7 @@ emptyAllButton.addEventListener('click', () => {
 
 canvas.addEventListener('pointerdown', (event) => {
   if (event.pointerType === 'mouse' && event.button !== 0) return;
+  event.preventDefault();
   state.pointerStart = {
     x: event.clientX,
     y: event.clientY,
@@ -612,6 +592,7 @@ canvas.addEventListener('pointerdown', (event) => {
 
 canvas.addEventListener('pointerup', (event) => {
   if (!state.pointerStart || state.pointerStart.pointerId !== event.pointerId) return;
+  event.preventDefault();
   const dx = event.clientX - state.pointerStart.x;
   const dy = event.clientY - state.pointerStart.y;
   state.pointerStart = null;
