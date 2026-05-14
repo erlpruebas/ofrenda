@@ -51,28 +51,32 @@ select {
   top: 24px;
   left: 24px;
   width: min(390px, calc(100vw - 48px));
-  padding: 22px;
+  padding: 14px;
   border: 1px solid var(--line);
   border-radius: 26px;
   background: linear-gradient(145deg, var(--panel), rgba(52, 38, 26, 0.58));
   box-shadow: 0 24px 90px rgba(0, 0, 0, 0.46);
   backdrop-filter: blur(18px);
   animation: panelIn 700ms ease both;
-  transition: opacity 220ms ease, transform 220ms ease, visibility 220ms ease;
+  transition: width 220ms ease, padding 220ms ease, border-radius 220ms ease;
 }
 
 .panel.is-hidden {
-  opacity: 0;
-  visibility: hidden;
-  transform: translateX(-18px) scale(0.98);
-  pointer-events: none;
+  width: auto;
+  padding: 8px;
+  border-radius: 999px;
+}
+
+.panel.is-hidden .panel-body {
+  display: none;
+}
+
+.panel-body {
+  padding: 12px 8px 8px;
 }
 
 .panel-toggle {
-  position: fixed;
-  z-index: 5;
-  top: 24px;
-  right: 24px;
+  width: 100%;
   min-height: 42px;
   padding: 0 16px;
   border: 1px solid rgba(255, 242, 211, 0.24);
@@ -231,7 +235,7 @@ button:active {
     top: 16px;
     left: 16px;
     width: min(340px, calc(100vw - 32px));
-    padding: 16px;
+    padding: 10px;
     border-radius: 22px;
   }
 
@@ -248,11 +252,6 @@ button:active {
 
   .control-grid {
     margin-top: 14px;
-  }
-
-  .panel-toggle {
-    top: 16px;
-    right: 16px;
   }
 }
 
@@ -274,11 +273,10 @@ button:active {
 
   .panel {
     top: auto;
-    right: 14px;
     bottom: 14px;
     left: 14px;
-    width: auto;
-    padding: 16px;
+    width: min(390px, calc(100vw - 28px));
+    padding: 10px;
     border-radius: 22px;
     max-height: calc(100vh - 78px);
     overflow: auto;
@@ -287,22 +285,16 @@ button:active {
   .control-grid {
     grid-template-columns: 1fr 1fr;
   }
-
-  .panel-toggle {
-    top: 12px;
-    right: 12px;
-  }
 }
 
 @media (orientation: portrait) and (max-width: 920px) {
   .panel {
     top: auto;
-    right: 14px;
     bottom: 14px;
     left: 14px;
-    width: auto;
+    width: min(420px, calc(100vw - 28px));
     max-height: min(54vh, 520px);
-    padding: 16px;
+    padding: 10px;
     overflow: auto;
   }
 

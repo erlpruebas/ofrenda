@@ -17,49 +17,52 @@
   <body>
     <div id="app">
       <canvas id="scene"></canvas>
-      <button class="panel-toggle" id="panelToggle" aria-expanded="true" aria-controls="controlsPanel">
-        Ocultar menu
-      </button>
 
       <section class="panel" id="controlsPanel" aria-label="Controles de la ofrenda">
-        <div>
-          <p class="eyebrow">Ofrenda budista virtual</p>
-          <h1>Boles de agua</h1>
-          <p class="hint" id="instruction">
-            Haz clic en la escena para avanzar bol por bol.
+        <button class="panel-toggle" id="panelToggle" aria-expanded="true" aria-controls="controlsPanel">
+          Ocultar menu
+        </button>
+
+        <div class="panel-body">
+          <div>
+            <p class="eyebrow">Ofrenda budista virtual</p>
+            <h1>Boles de agua</h1>
+            <p class="hint" id="instruction">
+              Haz clic en la escena para avanzar bol por bol.
+            </p>
+          </div>
+
+          <div class="control-grid">
+            <label>
+              Filas
+              <input id="rows" type="number" min="1" max="10" value="1" />
+            </label>
+            <label>
+              Boles por fila
+              <input id="cols" type="number" min="1" max="20" value="7" />
+            </label>
+          </div>
+
+          <div class="buttons">
+            <button id="applyLayout">Cambiar boles</button>
+            <button id="fillAll">Llenar todo</button>
+            <button id="emptyAll">Vaciar todo</button>
+          </div>
+
+          <div class="progress">
+            <span id="status">0 de 7 boles llenos</span>
+            <div class="bar"><span id="bar"></span></div>
+          </div>
+
+          <div class="steps">
+            <strong id="stepTitle">Modo llenar</strong>
+            <span id="stepText">Cada clic llena suavemente el siguiente bol.</span>
+          </div>
+
+          <p class="camera-help">
+            Vista: arrastra para girar, rueda para acercar y clic en la escena para hacer la accion.
           </p>
         </div>
-
-        <div class="control-grid">
-          <label>
-            Filas
-            <input id="rows" type="number" min="1" max="10" value="1" />
-          </label>
-          <label>
-            Boles por fila
-            <input id="cols" type="number" min="1" max="20" value="7" />
-          </label>
-        </div>
-
-        <div class="buttons">
-          <button id="modeToggle">Modo: llenar</button>
-          <button id="applyLayout">Cambiar boles</button>
-          <button id="reset">Reiniciar agua</button>
-        </div>
-
-        <div class="progress">
-          <span id="status">0 de 7 boles llenos</span>
-          <div class="bar"><span id="bar"></span></div>
-        </div>
-
-        <div class="steps">
-          <strong id="stepTitle">Modo llenar</strong>
-          <span id="stepText">Cada clic llena suavemente el siguiente bol.</span>
-        </div>
-
-        <p class="camera-help">
-          Vista: arrastra para girar, rueda para acercar y clic en la escena para hacer la accion.
-        </p>
       </section>
     </div>
     <script type="module" src="./src/main.js"></script>

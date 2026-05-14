@@ -4,11 +4,11 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 const canvas = document.querySelector('#scene');
 const panel = document.querySelector('#controlsPanel');
 const panelToggle = document.querySelector('#panelToggle');
-const modeToggle = document.querySelector('#modeToggle');
 const rowsInput = document.querySelector('#rows');
 const colsInput = document.querySelector('#cols');
 const applyLayoutButton = document.querySelector('#applyLayout');
-const resetButton = document.querySelector('#reset');
+const fillAllButton = document.querySelector('#fillAll');
+const emptyAllButton = document.querySelector('#emptyAll');
 const instruction = document.querySelector('#instruction');
 const statusText = document.querySelector('#status');
 const bar = document.querySelector('#bar');
@@ -315,12 +315,11 @@ function updateUi() {
   bar.style.width = `${total ? (filled / total) * 100 : 0}%`;
 
   const isFill = state.mode === 'fill';
-  modeToggle.textContent = `Modo: ${isFill ? 'llenar' : 'vaciar'}`;
-  stepTitle.textContent = `Modo ${isFill ? 'llenar' : 'vaciar'}`;
+  stepTitle.textContent = `Ahora: ${isFill ? 'llenar' : 'vaciar'}`;
 
   if (!available) {
-    stepText.textContent = isFill ? 'Todos los boles estan llenos.' : 'Todos los boles estan vacios y limpios.';
-    instruction.textContent = isFill ? 'Cambia a modo vaciar para continuar.' : 'Cambia a modo llenar para continuar.';
+    stepText.textContent = isFill ? 'Todos los boles estan llenos. Pasando a vaciar.' : 'Todos los boles estan vacios. Volviendo a llenar.';
+    instruction.textContent = isFill ? 'El siguiente toque empezara a vaciar.' : 'El siguiente toque empezara a llenar.';
     return;
   }
 
@@ -334,7 +333,13 @@ function nextBowlForMode() {
   const index = state.bowls.findIndex((bowl) =>
     state.mode === 'fill' ? bowl.userData.fill < 0.99 : bowl.userData.fill > 0.01,
   );
-  state.activeIndex = index === -1 ? Math.max(0, state.bowls.length - 1) : index;
+  if (index === -1) {
+    state.mode = state.mode === 'fill' ? 'empty' : 'fill';
+    const nextIndex = state.bowls.findIndex((bowl) => (state.mode === 'fill' ? bowl.userData.fill < 0.99 : bowl.userData.fill > 0.01));
+    state.activeIndex = nextIndex === -1 ? Math.max(0, state.bowls.length - 1) : nextIndex;
+  } else {
+    state.activeIndex = index;
+  }
   updateActiveBowl();
 }
 
@@ -381,7 +386,6 @@ async function fillBowl(bowl) {
   const pos = bowl.getWorldPosition(new THREE.Vector3());
   const home = jug.position.clone();
   await animateTransform(jug, pos.clone().add(new THREE.Vector3(-0.35, 0.62, 0.05)), new THREE.Euler(0, -0.15, -0.78), 330);
-  playWaterSound('fill');
   await animateFillLevel(bowl, 1, 720);
   await animateTransform(jug, home, new THREE.Euler(0, -0.22, -0.2), 360);
 }
@@ -392,7 +396,6 @@ async function emptyBowl(bowl) {
   const bucketSide = new THREE.Vector3(bucket.position.x - 0.18, 1.25, bucket.position.z - 0.08);
   const clothHome = cleaningCloth.position.clone();
 
-  playWaterSound('empty');
   await animateTransform(bowl, bucketSide, new THREE.Euler(0, 0, 0), 360);
   await animateTransform(bowl, bucketSide, new THREE.Euler(0.18, 0, -0.95), 260);
   await animateFillLevel(bowl, 0, 520);
@@ -413,7 +416,7 @@ async function advanceRitual() {
   }
   if (!bowl || !canActOnBowl(bowl)) return;
 
-  playClickSound();
+  playWaterSound('fill');
   state.animating = true;
   if (state.mode === 'fill') await fillBowl(bowl);
   else await emptyBowl(bowl);
@@ -458,6 +461,17 @@ function resetWater() {
     bowl.userData.fill = 0;
     updateWater(bowl);
   });
+  state.mode = 'fill';
+  nextBowlForMode();
+  updateUi();
+}
+
+function setAllBowls(fill) {
+  state.bowls.forEach((bowl) => {
+    bowl.userData.fill = fill;
+    updateWater(bowl);
+  });
+  state.mode = fill >= 0.99 ? 'empty' : 'fill';
   nextBowlForMode();
   updateUi();
 }
@@ -483,32 +497,12 @@ function getAudioContext() {
   return state.audioContext;
 }
 
-function playClickSound() {
-  const audio = getAudioContext();
-  if (!audio) return;
-
-  const now = audio.currentTime;
-  const oscillator = audio.createOscillator();
-  const gain = audio.createGain();
-
-  oscillator.type = 'triangle';
-  oscillator.frequency.setValueAtTime(780, now);
-  oscillator.frequency.exponentialRampToValueAtTime(340, now + 0.045);
-  gain.gain.setValueAtTime(0.001, now);
-  gain.gain.exponentialRampToValueAtTime(0.08, now + 0.006);
-  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.075);
-
-  oscillator.connect(gain).connect(audio.destination);
-  oscillator.start(now);
-  oscillator.stop(now + 0.085);
-}
-
 function playWaterSound(kind) {
   const audio = getAudioContext();
   if (!audio) return;
 
   const now = audio.currentTime;
-  const duration = kind === 'fill' ? 0.72 : 0.52;
+  const duration = 0.58;
   const bufferSize = Math.floor(audio.sampleRate * duration);
   const buffer = audio.createBuffer(1, bufferSize, audio.sampleRate);
   const data = buffer.getChannelData(0);
@@ -516,7 +510,7 @@ function playWaterSound(kind) {
   for (let i = 0; i < bufferSize; i += 1) {
     const t = i / bufferSize;
     const envelope = Math.sin(Math.PI * t);
-    const burble = Math.sin(i * (kind === 'fill' ? 0.055 : 0.085)) * 0.35;
+    const burble = Math.sin(i * 0.055) * 0.35;
     data[i] = (Math.random() * 2 - 1 + burble) * envelope * 0.32;
   }
 
@@ -525,8 +519,8 @@ function playWaterSound(kind) {
   const gain = audio.createGain();
 
   filter.type = 'lowpass';
-  filter.frequency.setValueAtTime(kind === 'fill' ? 880 : 640, now);
-  filter.frequency.linearRampToValueAtTime(kind === 'fill' ? 520 : 380, now + duration);
+  filter.frequency.setValueAtTime(880, now);
+  filter.frequency.linearRampToValueAtTime(520, now + duration);
   gain.gain.setValueAtTime(0.001, now);
   gain.gain.exponentialRampToValueAtTime(0.13, now + 0.05);
   gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
@@ -551,28 +545,26 @@ function render() {
   requestAnimationFrame(render);
 }
 
-modeToggle.addEventListener('click', () => {
-  playClickSound();
-  state.mode = state.mode === 'fill' ? 'empty' : 'fill';
-  nextBowlForMode();
-  updateUi();
-});
-
 panelToggle.addEventListener('click', () => {
-  playClickSound();
+  playWaterSound('fill');
   const hidden = panel.classList.toggle('is-hidden');
   panelToggle.textContent = hidden ? 'Mostrar menu' : 'Ocultar menu';
   panelToggle.setAttribute('aria-expanded', String(!hidden));
 });
 
 applyLayoutButton.addEventListener('click', () => {
-  playClickSound();
+  playWaterSound('fill');
   rebuildBowls();
 });
 
-resetButton.addEventListener('click', () => {
-  playClickSound();
-  resetWater();
+fillAllButton.addEventListener('click', () => {
+  playWaterSound('fill');
+  setAllBowls(1);
+});
+
+emptyAllButton.addEventListener('click', () => {
+  playWaterSound('fill');
+  setAllBowls(0);
 });
 
 canvas.addEventListener('pointerdown', (event) => {
