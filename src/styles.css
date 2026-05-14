@@ -230,7 +230,7 @@ button:active {
   font-size: 0.86rem;
 }
 
-@media (orientation: landscape) and (max-height: 760px) {
+@media (orientation: landscape) and (max-height: 760px), (max-height: 760px) and (min-aspect-ratio: 4 / 3) {
   .panel {
     top: 16px;
     left: 16px;
@@ -253,6 +253,14 @@ button:active {
   .control-grid {
     margin-top: 14px;
   }
+}
+
+body.is-landscape .panel {
+  left: 16px;
+}
+
+body.is-portrait .panel {
+  left: 14px;
 }
 
 @keyframes panelIn {

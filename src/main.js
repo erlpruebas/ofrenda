@@ -292,7 +292,7 @@ function frameCamera() {
   const spacing = bowlSpacing();
   const width = Math.max(3.2, (state.cols - 1) * spacing + 1.4);
   const depth = Math.max(2.2, (state.rows - 1) * spacing + 1.3);
-  const portrait = window.innerHeight > window.innerWidth;
+  const portrait = isPortrait();
   const distance = Math.max(5.4, Math.min(20, width * (portrait ? 0.75 : 0.6) + depth * 0.85 + 3.2));
   const height = Math.max(3.5, depth * 0.58 + (portrait ? 3.2 : 2.5));
   camera.position.set(0, height, distance);
@@ -497,10 +497,26 @@ function setAllBowls(fill) {
 function resize() {
   const width = window.innerWidth;
   const height = window.innerHeight;
+  updateOrientationClass();
   renderer.setSize(width, height, false);
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
   frameCamera();
+}
+
+function isPortrait() {
+  return window.matchMedia('(orientation: portrait)').matches || window.innerHeight > window.innerWidth;
+}
+
+function updateOrientationClass() {
+  document.body.classList.toggle('is-portrait', isPortrait());
+  document.body.classList.toggle('is-landscape', !isPortrait());
+}
+
+function handleOrientationChange() {
+  resize();
+  window.setTimeout(resize, 180);
+  window.setTimeout(resize, 420);
 }
 
 function getAudioContext() {
@@ -605,10 +621,13 @@ canvas.addEventListener('pointerup', (event) => {
 });
 
 window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', handleOrientationChange);
+screen.orientation?.addEventListener?.('change', handleOrientationChange);
 
 addLights();
 addRoom();
 addHelpers();
 rebuildBowls();
+updateOrientationClass();
 resize();
 render();
