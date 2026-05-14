@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ofrenda budista de agua</title>
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="scene"></canvas>
+      <section class="panel" aria-label="Controles de la ofrenda">
+        <div>
+          <p class="eyebrow">Ofrenda budista virtual</p>
+          <h1>Boles de agua</h1>
+          <p class="hint" id="instruction">
+            Elige llenar o vaciar y haz clic para avanzar paso a paso.
+          </p>
+        </div>
+
+        <div class="control-grid">
+          <label>
+            Modo
+            <select id="mode">
+              <option value="fill">Llenar</option>
+              <option value="empty">Vaciar</option>
+            </select>
+          </label>
+          <label>
+            Filas
+            <input id="rows" type="number" min="1" max="10" value="1" />
+          </label>
+          <label>
+            Boles por fila
+            <input id="cols" type="number" min="1" max="20" value="7" />
+          </label>
+        </div>
+
+        <div class="buttons">
+          <button id="applyLayout">Cambiar boles</button>
+          <button id="reset">Reiniciar agua</button>
+        </div>
+
+        <div class="progress">
+          <span id="status">0 de 7 boles llenos</span>
+          <div class="bar"><span id="bar"></span></div>
+        </div>
+
+        <div class="steps">
+          <strong id="stepTitle">Llenar: paso 1 de 4</strong>
+          <span id="stepText">Acerca la jarra al bol seleccionado.</span>
+        </div>
+
+        <p class="camera-help">
+          Vista: arrastra para girar, rueda para acercar y clic en la escena para hacer la accion.
+        </p>
+      </section>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
