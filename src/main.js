@@ -71,8 +71,15 @@ const rimMaterial = new THREE.MeshStandardMaterial({
 const waterMaterial = new THREE.MeshStandardMaterial({
   color: 0x7dcff2,
   transparent: true,
-  opacity: 0.72,
+  opacity: 0.38,
   roughness: 0.18,
+});
+
+const waterSurfaceMaterial = new THREE.MeshBasicMaterial({
+  color: 0x8bdcff,
+  transparent: true,
+  opacity: 0.46,
+  side: THREE.DoubleSide,
 });
 
 const markerMaterial = new THREE.MeshBasicMaterial({
@@ -223,8 +230,11 @@ function makeBowl(index, position) {
   foot.position.y = 0.02;
   group.add(foot);
 
-  const water = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.2, 0.02, 24), waterMaterial);
-  water.position.y = 0.1;
+  const water = new THREE.Group();
+  const waterVolume = new THREE.Mesh(new THREE.CylinderGeometry(0.37, 0.18, 0.2, 24), waterMaterial);
+  const waterSurface = new THREE.Mesh(new THREE.CircleGeometry(0.37, 32), waterSurfaceMaterial);
+  waterSurface.rotation.x = -Math.PI / 2;
+  water.add(waterVolume, waterSurface);
   water.visible = false;
   group.add(water);
 
@@ -239,6 +249,8 @@ function makeBowl(index, position) {
     fill: 0,
     marker,
     water,
+    waterVolume,
+    waterSurface,
     originalPosition: position.clone(),
   };
 
@@ -302,9 +314,15 @@ function updateActiveBowl() {
 function updateWater(bowl) {
   const fill = bowl.userData.fill;
   const water = bowl.userData.water;
+  const waterVolume = bowl.userData.waterVolume;
+  const waterSurface = bowl.userData.waterSurface;
+  const level = 0.055 + fill * 0.22;
+
   water.visible = fill > 0.02;
-  water.scale.y = Math.max(0.01, fill * 6.4);
-  water.position.y = 0.075 + fill * 0.245;
+  waterVolume.scale.y = Math.max(0.04, fill * 1.25);
+  waterVolume.position.y = level / 2;
+  waterSurface.position.y = level + 0.002;
+  waterSurface.scale.setScalar(0.54 + fill * 0.36);
 }
 
 function updateUi() {
