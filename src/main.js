@@ -9,7 +9,13 @@ const colsInput = document.querySelector('#cols');
 const applyLayoutButton = document.querySelector('#applyLayout');
 const fillAllButton = document.querySelector('#fillAll');
 const emptyAllButton = document.querySelector('#emptyAll');
+const imageUploadInput = document.querySelector('#imageUpload');
+const imageLargerButton = document.querySelector('#imageLarger');
+const imageSmallerButton = document.querySelector('#imageSmaller');
+const imageRemoveButton = document.querySelector('#imageRemove');
 const instruction = document.querySelector('#instruction');
+
+const STORAGE_KEY = 'ofrenda-budista-agua-v1';
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x151c19);
@@ -41,6 +47,9 @@ const state = {
   animating: false,
   audioContext: null,
   pointerStart: null,
+  savedFills: [],
+  imageDataUrl: '',
+  imageScale: 1,
 };
 
 const room = new THREE.Group();
@@ -93,6 +102,55 @@ const tableLegs = [];
 let jug;
 let bucket;
 let cleaningCloth;
+let wallImageGroup;
+let wallImageTexture;
+
+function loadSavedState() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    state.rows = clamp(saved.rows ?? state.rows, 1, 10);
+    state.cols = clamp(saved.cols ?? state.cols, 1, 20);
+    state.mode = saved.mode === 'empty' ? 'empty' : 'fill';
+    state.activeIndex = clamp(saved.activeIndex ?? 0, 0, 199);
+    state.savedFills = Array.isArray(saved.fills) ? saved.fills.map((fill) => clampNumber(fill, 0, 1)) : [];
+    state.imageDataUrl = typeof saved.imageDataUrl === 'string' ? saved.imageDataUrl : '';
+    state.imageScale = clampNumber(saved.imageScale ?? 1, 0.45, 2.4);
+    rowsInput.value = state.rows;
+    colsInput.value = state.cols;
+  } catch {
+    localStorage.removeItem(STORAGE_KEY);
+  }
+}
+
+function saveState() {
+  const fills = state.bowls.map((bowl) => Number(bowl.userData.fill.toFixed(3)));
+  const snapshot = {
+    rows: state.rows,
+    cols: state.cols,
+    mode: state.mode,
+    activeIndex: state.activeIndex,
+    fills,
+    imageDataUrl: state.imageDataUrl,
+    imageScale: state.imageScale,
+  };
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+  } catch {
+    // Large photos can exceed localStorage; keep the ritual state even if the image is too big.
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...snapshot, imageDataUrl: '' }));
+    } catch {
+      // Storage can be disabled in private browsing; the app still works without persistence.
+    }
+  }
+}
+
+function clampNumber(value, min, max) {
+  const numeric = Number(value);
+  if (Number.isNaN(numeric)) return min;
+  return Math.min(max, Math.max(min, numeric));
+}
 
 function addLights() {
   scene.add(new THREE.HemisphereLight(0xf4f8ff, 0x2b1b12, 2.2));
@@ -135,6 +193,67 @@ function addRoom() {
     tableLegs.push(leg);
     room.add(leg);
   }
+}
+
+function setWallImage(dataUrl) {
+  if (wallImageGroup) {
+    room.remove(wallImageGroup);
+    wallImageGroup.traverse((child) => {
+      child.geometry?.dispose?.();
+      child.material?.dispose?.();
+    });
+    wallImageGroup = null;
+  }
+
+  if (wallImageTexture) {
+    wallImageTexture.dispose();
+    wallImageTexture = null;
+  }
+
+  state.imageDataUrl = dataUrl || '';
+  if (!state.imageDataUrl) {
+    saveState();
+    return;
+  }
+
+  new THREE.TextureLoader().load(state.imageDataUrl, (texture) => {
+    wallImageTexture = texture;
+    texture.colorSpace = THREE.SRGBColorSpace;
+
+    const image = texture.image;
+    const aspect = image?.width && image?.height ? image.width / image.height : 1.4;
+    const width = 2.9 * state.imageScale;
+    const height = (width / aspect) || 1.8;
+
+    wallImageGroup = new THREE.Group();
+    const frame = new THREE.Mesh(
+      new THREE.PlaneGeometry(width + 0.16, height + 0.16),
+      new THREE.MeshBasicMaterial({ color: 0xcaa56b }),
+    );
+    frame.position.z = -0.012;
+
+    const backing = new THREE.Mesh(
+      new THREE.PlaneGeometry(width + 0.06, height + 0.06),
+      new THREE.MeshBasicMaterial({ color: 0x5d432c }),
+    );
+    backing.position.z = -0.006;
+
+    const picture = new THREE.Mesh(
+      new THREE.PlaneGeometry(width, height),
+      new THREE.MeshBasicMaterial({ map: texture }),
+    );
+
+    wallImageGroup.add(frame, backing, picture);
+    wallImageGroup.position.set(0, 3.55, -5.48);
+    room.add(wallImageGroup);
+    saveState();
+  });
+}
+
+function resizeWallImage(delta) {
+  if (!state.imageDataUrl) return;
+  state.imageScale = clampNumber(state.imageScale + delta, 0.45, 2.4);
+  setWallImage(state.imageDataUrl);
 }
 
 function addHelpers() {
@@ -272,6 +391,8 @@ function rebuildBowls() {
       const x = col * spacing - totalWidth / 2;
       const z = row * spacing - totalDepth / 2;
       const bowl = makeBowl(index, new THREE.Vector3(x, 0.88, z));
+      bowl.userData.fill = state.savedFills[index] ?? 0;
+      updateWater(bowl);
       bowlsGroup.add(bowl);
       state.bowls.push(bowl);
       index += 1;
@@ -282,6 +403,7 @@ function rebuildBowls() {
   nextBowlForMode();
   updateUi();
   frameCamera();
+  saveState();
 }
 
 function frameCamera() {
@@ -348,6 +470,7 @@ function nextBowlForMode() {
     state.activeIndex = index;
   }
   updateActiveBowl();
+  saveState();
 }
 
 function animateFillLevel(bowl, targetFill, duration = 650) {
@@ -431,6 +554,7 @@ async function advanceRitual() {
 
   nextBowlForMode();
   updateUi();
+  saveState();
 }
 
 function canActOnBowl(bowl) {
@@ -451,6 +575,7 @@ function selectBowlFromPointer(event) {
   state.activeIndex = bowl.userData.index;
   updateActiveBowl();
   updateUi();
+  saveState();
   return true;
 }
 
@@ -471,6 +596,7 @@ function setAllBowls(fill) {
   state.mode = fill >= 0.99 ? 'empty' : 'fill';
   nextBowlForMode();
   updateUi();
+  saveState();
 }
 
 function resize() {
@@ -567,6 +693,7 @@ panelToggle.addEventListener('click', () => {
 
 applyLayoutButton.addEventListener('click', () => {
   playWaterSound('fill');
+  state.savedFills = state.bowls.map((bowl) => bowl.userData.fill);
   rebuildBowls();
 });
 
@@ -578,6 +705,55 @@ fillAllButton.addEventListener('click', () => {
 emptyAllButton.addEventListener('click', () => {
   playWaterSound('fill');
   setAllBowls(0);
+});
+
+imageUploadInput.addEventListener('change', () => {
+  const file = imageUploadInput.files?.[0];
+  if (!file) return;
+  readImageFile(file).then((dataUrl) => {
+    state.imageScale = 1;
+    setWallImage(dataUrl);
+    imageUploadInput.value = '';
+  });
+});
+
+function readImageFile(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.addEventListener('load', () => {
+      const source = String(reader.result || '');
+      const image = new Image();
+      image.addEventListener('load', () => {
+        const maxSide = 1280;
+        const ratio = Math.min(1, maxSide / Math.max(image.width, image.height));
+        const canvasElement = document.createElement('canvas');
+        canvasElement.width = Math.max(1, Math.round(image.width * ratio));
+        canvasElement.height = Math.max(1, Math.round(image.height * ratio));
+        const context = canvasElement.getContext('2d');
+        context.drawImage(image, 0, 0, canvasElement.width, canvasElement.height);
+        resolve(canvasElement.toDataURL('image/jpeg', 0.82));
+      });
+      image.addEventListener('error', () => resolve(source));
+      image.src = source;
+    });
+    reader.readAsDataURL(file);
+  });
+}
+
+imageLargerButton.addEventListener('click', () => {
+  playWaterSound('fill');
+  resizeWallImage(0.12);
+});
+
+imageSmallerButton.addEventListener('click', () => {
+  playWaterSound('fill');
+  resizeWallImage(-0.12);
+});
+
+imageRemoveButton.addEventListener('click', () => {
+  playWaterSound('fill');
+  state.imageScale = 1;
+  setWallImage('');
 });
 
 canvas.addEventListener('pointerdown', (event) => {
@@ -608,7 +784,9 @@ screen.orientation?.addEventListener?.('change', handleOrientationChange);
 addLights();
 addRoom();
 addHelpers();
+loadSavedState();
 rebuildBowls();
+setWallImage(state.imageDataUrl);
 updateOrientationClass();
 resize();
 render();

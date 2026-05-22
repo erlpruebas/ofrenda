@@ -161,6 +161,38 @@ input:focus {
   grid-template-columns: 1fr 1fr;
 }
 
+.image-controls {
+  display: grid;
+  grid-template-columns: 1fr 40px 40px 40px;
+  gap: 8px;
+  margin-top: 8px;
+  align-items: end;
+}
+
+.image-picker {
+  min-height: 40px;
+  place-items: center;
+  border-radius: 15px;
+  color: #24180e;
+  background: linear-gradient(135deg, #eac77b, #b9823b);
+  cursor: pointer;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.image-picker input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.image-controls button {
+  min-width: 40px;
+  padding: 0;
+}
+
 button {
   min-height: 40px;
   border: 0;
@@ -253,6 +285,14 @@ body.is-portrait .panel {
 
   .control-grid {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .control-grid button {
+    grid-column: 1 / -1;
+  }
+
+  .image-controls {
+    grid-template-columns: 1fr 40px 40px 40px;
   }
 }
 
